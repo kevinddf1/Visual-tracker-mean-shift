@@ -11,28 +11,15 @@ import cv2
 import sys
 
 
-    
-    
-    
 """global data common to all vision algorithms"""
 isTracking = False
 showRectangle = False
-targetX = targetY = 0 # for target region
+targetX = targetY = 0  # for target region
 targetRegionSize = 20  # the target region size
 r = g = b = 0.0
 image = np.zeros((640, 480, 3), np.uint8)
 trackedImage = np.zeros((640, 480, 3), np.uint8)
 imageWidth = imageHeight = 0
-
-
-
-
-
-
-
-
-
-
 
 
 """Defines a color model for the target of interest.
@@ -48,7 +35,7 @@ def TuneTracker(x, y):
         b = (b / sumpixels,)
         r = r / sumpixels
         g = g / sumpixels
-    print(r, g, b, "at location ", x, y)
+    #print(r, g, b, "at location ", x, y)
 
 
 """ Have to update this to perform Sequential Monte Carlo
@@ -60,35 +47,25 @@ def TuneTracker(x, y):
 
 def doTracking():
     global isTracking, image, r, g, b
-    if isTracking==False:
+    if isTracking == False:
         return
     print("is tracking")
     # print(image.shape)
     imheight, imwidth, implanes = image.shape
-    
-   
+
     for j in range(imwidth):
         for i in range(imheight):
-            bb, gg, rr = image[i, j]
-            sumpixels = float(bb) + float(gg) + float(rr)
-            if sumpixels == 0:
-                sumpixels = 1
-            if rr / sumpixels >= r and gg / sumpixels >= g and bb / sumpixels >= b:
-                image[i, j] = [255, 255, 255]
-            else:
-                image[i, j] = [0, 0, 0]
+            TuneTracker(j, i)
 
 
 def clickHandler(event, x, y, flags, param):
-    global targetX, targetY, showRectangle
+    global targetX, targetY, showRectangle, isTracking
     if event == cv2.EVENT_LBUTTONUP:
-        print("left button released")
-        TuneTracker(x, y)
-        targetX=x
-        targetY=y
-        showRectangle=True
-        
-        
+        print("left button released at location ", x, y)
+        targetX = x
+        targetY = y
+        showRectangle = True
+        isTracking = True
 
 
 def mapClicks(x, y, curWidth, curHeight):
@@ -98,23 +75,20 @@ def mapClicks(x, y, curWidth, curHeight):
     return imageX, imageY
 
 
-"""-----------------------------------------------------new functions----------------------------"""
 
 """Defines a color model for the target of interest.
    Now, just reading pixel color at location
 """
-def drawRectangle():
-    global image
-    p1 = (int(targetX-targetRegionSize/2), int(targetY-targetRegionSize/2))
-    p2 = (int(targetX+targetRegionSize/2), int(targetY+targetRegionSize/2))
-    cv2.rectangle(image, p1, p2, (0, 0, 255), thickness= 1, lineType=cv2.LINE_8) 
-    print("rectangle draw!")
 
 
-
+def drawRectangle(imageCopy):
+    p1 = (int(targetX - targetRegionSize / 2), int(targetY - targetRegionSize / 2))
+    p2 = (int(targetX + targetRegionSize / 2), int(targetY + targetRegionSize / 2))
+    cv2.rectangle(imageCopy, p1, p2, (0, 0, 255), thickness=1, lineType=cv2.LINE_8)
 
 
 def captureVideo(src):
+    # read input video and setup the output window
     global image, isTracking, showRectangle, trackedImage
     cap = cv2.VideoCapture(src)
     if cap.isOpened() and src == "0":
@@ -138,25 +112,27 @@ def captureVideo(src):
     windowName = "Input View, press q to quit"
     cv2.namedWindow(windowName)
     cv2.setMouseCallback(windowName, clickHandler)
-    
-    
-    #beging visual tracing
+
+    # beging visual tracing
     # 1. initiate a target region, (targetX, targetY, targetRegionSize)
     # 2. press t to toggle tracking
     # 3. mean-shift tracker, (target model, mean-shift vector, KL divergence/Bhattacharyya distance)
     while True:
         # Capture frame-by-frame
         ret, image = cap.read()
+        imageCopy = image.copy()
         if ret == False:
             break
 
         # Display the resulting frame
         if isTracking:
             doTracking()
-        if(showRectangle==True):
-            drawRectangle()
-        cv2.imshow(windowName, image)
+        if showRectangle == True:
+            drawRectangle(imageCopy)
+        cv2.imshow(windowName, imageCopy)
         inputKey = cv2.waitKey(waitTime) & 0xFF
+        
+        # user inferface handler
         if inputKey == ord("q"):
             break
         elif inputKey == ord("t"):
