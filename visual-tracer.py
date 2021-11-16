@@ -10,15 +10,13 @@ import numpy as np
 import cv2
 import sys
 
-# Work Flow
-# 1. initiate a target region, (targetX, targetY, targetRegionSize)
-# 2. press t to toggle tracking
-# 3. mean-shift tracker, (target model, mean-shift vector, KL divergence/Bhattacharyya distance)
+
     
     
     
 """global data common to all vision algorithms"""
 isTracking = False
+showRectangle = False
 targetX = targetY = 0 # for target region
 targetRegionSize = 20  # the target region size
 r = g = b = 0.0
@@ -82,9 +80,15 @@ def doTracking():
 
 
 def clickHandler(event, x, y, flags, param):
+    global targetX, targetY, showRectangle
     if event == cv2.EVENT_LBUTTONUP:
         print("left button released")
         TuneTracker(x, y)
+        targetX=x
+        targetY=y
+        showRectangle=True
+        
+        
 
 
 def mapClicks(x, y, curWidth, curHeight):
@@ -99,9 +103,11 @@ def mapClicks(x, y, curWidth, curHeight):
 """Defines a color model for the target of interest.
    Now, just reading pixel color at location
 """
-def drawRectangle(x, y):
-    global targetX, targetY, image
-    cv2.rectangle(image, x, y, (0, 0, 255), thickness= 1, lineType=cv2.LINE_8) 
+def drawRectangle():
+    global image
+    p1 = (int(targetX-targetRegionSize/2), int(targetY-targetRegionSize/2))
+    p2 = (int(targetX+targetRegionSize/2), int(targetY+targetRegionSize/2))
+    cv2.rectangle(image, p1, p2, (0, 0, 255), thickness= 1, lineType=cv2.LINE_8) 
     print("rectangle draw!")
 
 
@@ -109,7 +115,7 @@ def drawRectangle(x, y):
 
 
 def captureVideo(src):
-    global image, isTracking, trackedImage
+    global image, isTracking, showRectangle, trackedImage
     cap = cv2.VideoCapture(src)
     if cap.isOpened() and src == "0":
         ret = cap.set(3, 640) and cap.set(4, 480)
@@ -132,6 +138,12 @@ def captureVideo(src):
     windowName = "Input View, press q to quit"
     cv2.namedWindow(windowName)
     cv2.setMouseCallback(windowName, clickHandler)
+    
+    
+    #beging visual tracing
+    # 1. initiate a target region, (targetX, targetY, targetRegionSize)
+    # 2. press t to toggle tracking
+    # 3. mean-shift tracker, (target model, mean-shift vector, KL divergence/Bhattacharyya distance)
     while True:
         # Capture frame-by-frame
         ret, image = cap.read()
@@ -141,13 +153,14 @@ def captureVideo(src):
         # Display the resulting frame
         if isTracking:
             doTracking()
-        drawRectangle((100,100),(150,150))
+        if(showRectangle==True):
+            drawRectangle()
         cv2.imshow(windowName, image)
         inputKey = cv2.waitKey(waitTime) & 0xFF
         if inputKey == ord("q"):
             break
         elif inputKey == ord("t"):
-            isTracking = not isTracking
+            showRectangle = not showRectangle
 
     # When everything done, release the capture
     cap.release()
