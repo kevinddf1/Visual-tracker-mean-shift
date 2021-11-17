@@ -35,6 +35,8 @@ w, h = (
 )  # roi is a rectangle repsentend by the left corner point(x,y) and width and hight
 track_window = (0, 0, w, h)
 trackedImage = np.zeros((h, w, 3), np.uint8)
+roi_hist = []
+
 
 # Setup the termination criteria, either 10 iteration or move by atleast 1 pt
 term_crit = (cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 10, 1)
@@ -43,11 +45,11 @@ term_crit = (cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 10, 1)
 # parallelizing processing
 pool = mp.Pool()
 
-""" -------------------------------------------clickHandler---------------------------------------------"""
+""" -------------------------------------------clickHandler (initiate a target region)---------------------------------------------"""
 
 # initiate a target region, and build the target model using a histogram as feature
 def clickHandler(event, x, y, flags, param):
-    global showRectangle, isTracking, roiSlecet, image, track_window, trackedImage
+    global showRectangle, isTracking, roiSlecet, track_window, trackedImage, roi_hist
     if event == cv2.EVENT_LBUTTONUP:
         print("left button released at location ", x, y)
         # out of boundary
@@ -75,23 +77,25 @@ def clickHandler(event, x, y, flags, param):
             print("finished  building histogram")
 
 
-"""---------------------------------------------doTracking----------------------------------------------"""
+"""---------------------------------------------doTracking(mean-shift tracker)----------------------------------------------"""
 
-
+# mean-shift tracker, (target histogram, Bhattacharyya distance)
 def doTracking():
-    global isTracking, image, r, g, b
-    
-    
+    global r, g, b, track_window
+    hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+    dst = cv2.calcBackProject([hsv],[0],roi_hist,[0,180],1)
+    # apply meanshift to get the new location
+    ret, track_window = cv2.meanShift(dst, track_window, term_crit)    
 
-    # parallel calculating
-    def tempFun(j):
-        for i in range(imageHeight):
-            TuneTracker(j, i)
-    tempList = range(imageWidth)
-    pool.map_async(tempFun, tempList)
+    # # parallel calculating
+    # def tempFun(j):
+    #     for i in range(imageHeight):
+    #         TuneTracker(j, i)
+    # tempList = range(imageWidth)
+    # pool.map_async(tempFun, tempList)
 
 
-"""--------------------------------------------captureVideo--------------------------------"""
+"""--------------------------------------------captureVideo(set toggle tracking)--------------------------------"""
 # read input video and setup output window
 def captureVideo(src):
     # read input video and setup the output window
