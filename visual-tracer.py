@@ -1,46 +1,53 @@
 #!/usr/bin/python
-""" Constructs a videocapture device on either webcam or a disk movie file.
-Press q to exit
 
-Junaed Sattar
-October 2021
+# Author: Fan Ding
+# Email: ding0322@umn.edu
+# Date: 11/17/2021
+
 """
+Visual tracer:
+Read a video from either webcam or a disk movie file, and do visual trace on objects.
+Press q to exit, 
+Press t to toggle tracker rectangle
+"""
+
+
 from __future__ import division
 import multiprocessing as mp
 import numpy as np
 import cv2
 import sys
+import time
 
 # Mian steps
 # 1. initiate a target region, (targetX, targetY, targetRegionSize)
 # 2. press t to toggle tracking
-# 3. mean-shift tracker, (target model, mean-shift vector, KL divergence/Bhattacharyya distance)
+# 3. mean-shift tracker, (target model, mean-shift vector using Bhattacharyya distance)
 # 4. continue until user press q to quit
 
-"""--------------------------------------global data common to all vision algorithms---------------------------"""
+"""--------------------------------------------------------global data --------------------------------------"""
 # bool flags
 isTracking = False
 showRectangle = False
-roiSlecet = False
+roiSelect = False
 
 # iamge info
 r = g = b = 0.0
 image = np.zeros((640, 480, 3), np.uint8)
 imageWidth = imageHeight = 0
 
-# roi info # region of interst
+# region of interst info. roi is a rectangle repsentend by the left corner point(x,y) and width and hight
 w, h = (
     60,
     40,
-)  # roi is a rectangle repsentend by the left corner point(x,y) and width and hight
+)
+ratio = 5  # adjust the w,h depents on the input image size
 track_window = (0, 0, w, h)
 trackedImage = np.zeros((h, w, 3), np.uint8)
 roi_hist = []
 
-
 # Setup the termination criteria, either 10 iteration or move by atleast 1 pt
 term_crit = (cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 10, 1)
-
 
 # parallelizing processing
 pool = mp.Pool()
@@ -49,7 +56,7 @@ pool = mp.Pool()
 
 # initiate a target region, and build the target model using a histogram as feature
 def clickHandler(event, x, y, flags, param):
-    global showRectangle, isTracking, roiSlecet, track_window, trackedImage, roi_hist
+    global showRectangle, isTracking, roiSelect, track_window, trackedImage, roi_hist
     if event == cv2.EVENT_LBUTTONUP:
         print("left button released at location ", x, y)
         # out of boundary
@@ -62,7 +69,7 @@ def clickHandler(event, x, y, flags, param):
             # edit gobal variables
             showRectangle = True
             isTracking = True
-            roiSlecet = True
+            roiSelect = True
             track_window = (x, y, w, h)
             trackedImage = image[y : y + h, x : x + w]
             # build histogram
@@ -73,8 +80,8 @@ def clickHandler(event, x, y, flags, param):
             )
             roi_hist = cv2.calcHist([hsv_roi], [0], mask, [180], [0, 180])
             cv2.normalize(roi_hist, roi_hist, 0, 255, cv2.NORM_MINMAX)
-            print(roi_hist.size)
-            print(roi_hist)
+            # print(roi_hist.size)
+            # print(roi_hist)
             print("finished  building histogram")
 
 
@@ -100,18 +107,20 @@ def doTracking():
 # read input video and setup output window
 def captureVideo(src):
     # read input video and setup the output window
-    global isTracking, showRectangle, image, imageHeight, imageWidth, w, h
+    global isTracking, showRectangle, roiSelect, image, imageHeight, imageWidth, w, h
     cap = cv2.VideoCapture(src)
+    # read web cam input
     if cap.isOpened() and src == "0":
         ret = cap.set(3, 640) and cap.set(4, 480)
         if ret == False:
             print("Cannot set frame properties, returning")
             return
+    # read disk video
     else:
         ret, image = cap.read()
         imageHeight, imageWidth, implanes = image.shape
-        h =int(imageHeight/5)
-        w =int(imageWidth/5)
+        h = int(imageHeight / ratio)
+        w = int(imageWidth / ratio)
         frate = cap.get(cv2.CAP_PROP_FPS)
         print(frate, " is the framerate")
         waitTime = int(1000 / frate)
@@ -137,15 +146,12 @@ def captureVideo(src):
         if ret == False:
             break
 
-        # make a copy just for later ouput
-        imageCopy = image.copy()
-
         # Display the resulting frame
         if isTracking:
             doTracking()
         if showRectangle:
-            drawRectangle(imageCopy)
-        cv2.imshow(windowName, imageCopy)
+            drawRectangle()
+        cv2.imshow(windowName, image)
         inputKey = cv2.waitKey(waitTime) & 0xFF
 
         # user inferface handler
@@ -181,10 +187,10 @@ def TuneTracker(x, y):
     sumpixels = float(b) + float(g) + float(r)
     if sumpixels != 0:
         b = int(b / sumpixels)
-        r = int(r / sumpixels)
         g = int(g / sumpixels)
-        # print(r, g, b, "at location ", x, y)
+        r = int(r / sumpixels)
         image[y, x] = [b, g, r]
+        # print(r, g, b, "at location ", x, y)
 
 
 # def mapClicks(x, y, curWidth, curHeight):
@@ -194,10 +200,11 @@ def TuneTracker(x, y):
 #     return imageX, imageY
 
 
-def drawRectangle(imageCopy):
+def drawRectangle():
+    global image
     p1 = (track_window[0], track_window[1])
     p2 = (track_window[0] + w, track_window[1] + h)
-    cv2.rectangle(imageCopy, p1, p2, (0, 0, 255), thickness=2, lineType=cv2.LINE_8)
+    cv2.rectangle(image, p1, p2, (0, 0, 255), thickness=2, lineType=cv2.LINE_8)
 
 
 """----------------------------------------main--------------------------"""
