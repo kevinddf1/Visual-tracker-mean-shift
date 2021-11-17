@@ -20,7 +20,7 @@ import sys
 import time
 
 # Mian steps
-# 1. initiate a target region, (targetX, targetY, targetRegionSize)
+# 1. initiate a target region, (x,y,w,h)
 # 2. press t to toggle tracking
 # 3. mean-shift tracker, (target model, mean-shift vector using Bhattacharyya distance)
 # 4. continue until user press q to quit
