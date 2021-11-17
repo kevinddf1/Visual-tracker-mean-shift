@@ -73,6 +73,7 @@ def clickHandler(event, x, y, flags, param):
             )
             roi_hist = cv2.calcHist([hsv_roi], [0], mask, [180], [0, 180])
             cv2.normalize(roi_hist, roi_hist, 0, 255, cv2.NORM_MINMAX)
+            print(roi_hist.size)
             print(roi_hist)
             print("finished  building histogram")
 
@@ -83,9 +84,9 @@ def clickHandler(event, x, y, flags, param):
 def doTracking():
     global r, g, b, track_window
     hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
-    dst = cv2.calcBackProject([hsv],[0],roi_hist,[0,180],1)
+    dst = cv2.calcBackProject([hsv], [0], roi_hist, [0, 180], 1)
     # apply meanshift to get the new location
-    ret, track_window = cv2.meanShift(dst, track_window, term_crit)    
+    ret, track_window = cv2.meanShift(dst, track_window, term_crit)
 
     # # parallel calculating
     # def tempFun(j):
@@ -99,7 +100,7 @@ def doTracking():
 # read input video and setup output window
 def captureVideo(src):
     # read input video and setup the output window
-    global  isTracking, showRectangle,image, imageHeight, imageWidth
+    global isTracking, showRectangle, image, imageHeight, imageWidth, w, h
     cap = cv2.VideoCapture(src)
     if cap.isOpened() and src == "0":
         ret = cap.set(3, 640) and cap.set(4, 480)
@@ -109,6 +110,8 @@ def captureVideo(src):
     else:
         ret, image = cap.read()
         imageHeight, imageWidth, implanes = image.shape
+        h =int(imageHeight/5)
+        w =int(imageWidth/5)
         frate = cap.get(cv2.CAP_PROP_FPS)
         print(frate, " is the framerate")
         waitTime = int(1000 / frate)
@@ -170,6 +173,7 @@ def inBoundary(x, y):
     else:
         return True
 
+
 # tune the brightness of the image
 def TuneTracker(x, y):
     global r, g, b, image
@@ -191,8 +195,8 @@ def TuneTracker(x, y):
 
 
 def drawRectangle(imageCopy):
-    p1 = (track_window[0], track_window[1]) 
-    p2 = (track_window[0] + w, track_window[1] + h) 
+    p1 = (track_window[0], track_window[1])
+    p2 = (track_window[0] + w, track_window[1] + h)
     cv2.rectangle(imageCopy, p1, p2, (0, 0, 255), thickness=2, lineType=cv2.LINE_8)
 
 
