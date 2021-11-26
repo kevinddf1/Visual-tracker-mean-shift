@@ -71,6 +71,7 @@ def clickHandler(event, x, y, flags, param):
             trackedImage = image[y : y + h, x : x + w]
             # build histogram
             roi_hist = buildHist(trackedImage)
+            print(roi_hist)
 
 
 """---------------------------------------------doTracking(mean-shift tracker)----------------------------------------------"""
