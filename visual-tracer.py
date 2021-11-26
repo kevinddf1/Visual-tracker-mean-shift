@@ -11,6 +11,7 @@ Press q to exit,
 Press t to toggle tracker rectangle
 """
 
+# You can format an entire file with Format Document (Ctrl+Shift+I) 
 
 from __future__ import division
 import multiprocessing as mp
@@ -42,12 +43,13 @@ w, h = (
     40,
 )
 ratio = 5  # adjust the w,h depents on the input image size
-track_window = (0, 0, w, h)
+track_window = [0, 0, w, h]
 trackedImage = np.zeros((h, w, 3), np.uint8)
 roi_hist = []
 
 # Setup the termination criteria, either 10 iteration or move by atleast 1 pt
 term_crit = (cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 10, 1)
+max_loop = 10
 
 # parallelizing processing
 pool = mp.Pool()
@@ -70,7 +72,7 @@ def clickHandler(event, x, y, flags, param):
             showRectangle = True
             isTracking = True
             roiSelect = True
-            track_window = (x, y, w, h)
+            track_window = [x, y, w, h]
             trackedImage = image[y : y + h, x : x + w]
             # build histogram
             print("building histogram")
@@ -80,7 +82,7 @@ def clickHandler(event, x, y, flags, param):
             )
             roi_hist = cv2.calcHist([hsv_roi], [0], mask, [180], [0, 180])
             cv2.normalize(roi_hist, roi_hist, 0, 255, cv2.NORM_MINMAX)
-            # print(roi_hist.size)
+            print("roi_hist size:", roi_hist.size)
             # print(roi_hist)
             print("finished  building histogram")
 
@@ -91,9 +93,46 @@ def clickHandler(event, x, y, flags, param):
 def doTracking():
     global r, g, b, track_window
     hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+    # print(hsv)
+    # print("hsv size:", hsv.size)
     dst = cv2.calcBackProject([hsv], [0], roi_hist, [0, 180], 1)
+    # print(dst)
+    # print("dst size:", dst.size)
     # apply meanshift to get the new location
-    ret, track_window = cv2.meanShift(dst, track_window, term_crit)
+    # ret, track_window = cv2.meanShift(dst, track_window, term_crit)
+
+    # define mean shift variables
+    htrww = int(track_window[2] / 2)  # half of tracker window w
+    htrwh = int(track_window[3] / 2)  # half of tracker window h
+    cx = cy = 0  # center x and center y
+    cmx = track_window[0] + htrww  # center mass x
+    cmy = track_window[1] + htrwh  #  center mass y
+    loop_count = max_loop
+    # mean shift loops
+    while (abs(cx - cmx) > 5 or abs(cy - cmy) > 5) and loop_count > 0:
+        # assgin new cx and cy
+        cx = cmx
+        cy = cmy
+        totalmassX = 0
+        totalmassY = 0
+        totalmass = 0
+        # calulate cmx and cmy base on the roi range
+        for i in range(max(0, cx - htrww), min(cx + htrww, imageWidth)):
+            for j in range(max(0, cy - htrwh), min(cy + htrwh, imageHeight)):
+                # print('test')
+                totalmassX += dst[j][i] * i
+                totalmassY += dst[j][i] * j
+                totalmass += dst[j][i]
+        print("totalmassX, totalmassY , totalmass:", totalmassX, totalmassY, totalmass)
+        cmx = (int)(totalmassX / totalmass)
+        cmy = (int)(totalmassY / totalmass)
+        print("cmx, cmy: ", cmx, cmy)
+        # decrease loop_count
+        loop_count -= 1
+
+    # change trackwindow
+    track_window[0] = cmx - htrww
+    track_window[1] = cmy - htrwh
 
     # # parallel calculating
     # def tempFun(j):
