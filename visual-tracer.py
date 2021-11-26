@@ -50,7 +50,6 @@ roi_hist = []
 max_loop = 5
 
 
-
 """ -------------------------------------------clickHandler (initiate a target region)---------------------------------------------"""
 
 # initiate a target region, and build the target model using a histogram as feature
@@ -98,8 +97,10 @@ def doTracking():
     cmy = track_window[1] + halfH  #  center mass y
     loop_count = max_loop
     hist_curr = -1 * roi_hist
+    similarity = bhatta(hist_curr, roi_hist)
     # 3. mean shift loops
-    while bhatta(hist_curr, roi_hist) < 0.9 and loop_count > 0:
+    while similarity < 0.9 and loop_count > 0:
+        print("similarity: ", similarity)
         # assign center mass point to current center point
         cx = cmx
         cy = cmy
@@ -115,10 +116,15 @@ def doTracking():
                 totalmass += dst[j][i]
         # print("totalmassX, totalmassY , totalmass:", totalmassX, totalmassY, totalmass)
         # update cmx and hist_curr
-        cmx = (int)(totalmassX / totalmass)
-        cmy = (int)(totalmassY / totalmass)
-        newWindow = image[cmy - halfH : cmy + halfH, cmx - halfW : cmx + halfW]
+        if totalmass != 0:
+            cmx = (int)(totalmassX / totalmass)
+            cmy = (int)(totalmassY / totalmass)
+        newWindow = image[
+            max(0, cmy - halfH) : min(imageHeight - 1, cmy + halfH),
+            max(0, cmx - halfW) : min(imageWidth - 1, cmx + halfW),
+        ]
         hist_curr = buildHist(newWindow)
+        similarity = bhatta(hist_curr, roi_hist)
         # print("cmx, cmy: ", cmx, cmy)
         # decrease loop_count
         loop_count -= 1
@@ -155,7 +161,7 @@ def captureVideo(src):
         ret, image = cap.read()
         imageHeight, imageWidth, implanes = image.shape
         frate = cap.get(cv2.CAP_PROP_FPS)
-        print(frate, " is the framerate")
+        print(frate, " is the frame rate")
         waitTime = int(1000 / frate)
 
     # 2. and setup the output window. (waitTime = time/frame. Adjust accordingly.)
@@ -215,6 +221,8 @@ def inBoundary(x, y):
 
 
 def bhatta(hist1, hist2):
+    if np.linalg.norm(hist1) == 0 or np.linalg.norm(hist2) == 0:
+        return 0
     return 1 - spatial.distance.cosine(hist1, hist2)
 
 
@@ -257,5 +265,4 @@ else:
     print("Not in main")
 
 # close parallel programming
-pool.close()
 print("Program end")
