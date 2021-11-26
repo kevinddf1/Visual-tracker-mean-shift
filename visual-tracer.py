@@ -12,6 +12,10 @@ Press t to toggle tracker rectangle
 """
 
 # You can format an entire file with Format Document (Ctrl+Shift+I)
+# Reference:
+# https://gist.github.com/jstadler/c47861f3d86c40b82d4c (find center mass)
+# https://www.programcreek.com/python/example/89397/cv2.meanShift (openCV meanshift)
+
 
 from __future__ import division
 import multiprocessing as mp
@@ -19,6 +23,7 @@ import numpy as np
 import cv2
 import sys
 import time
+from scipy import spatial
 
 # Mian steps
 # 1. initiate a target region, (x,y,w,h)
@@ -71,16 +76,7 @@ def clickHandler(event, x, y, flags, param):
             track_window = [x, y, w, h]
             trackedImage = image[y : y + h, x : x + w]
             # build histogram
-            print("building histogram")
-            hsv_roi = cv2.cvtColor(trackedImage, cv2.COLOR_BGR2HSV)
-            mask = cv2.inRange(
-                hsv_roi, np.array((0.0, 60.0, 32.0)), np.array((180.0, 255.0, 255.0))
-            )
-            roi_hist = cv2.calcHist([hsv_roi], [0], mask, [180], [0, 180])
-            cv2.normalize(roi_hist, roi_hist, 0, 255, cv2.NORM_MINMAX)
-            print("roi_hist size:", roi_hist.size)
-            # print(roi_hist)
-            print("finished  building histogram")
+            roi_hist = buildHist(trackedImage)
 
 
 """---------------------------------------------doTracking(mean-shift tracker)----------------------------------------------"""
@@ -99,14 +95,15 @@ def doTracking():
     # ret, track_window = cv2.meanShift(dst, track_window, term_crit)
 
     # 2. define mean shift variables
-    halfW= int(w / 2)  # half of tracker window w
+    halfW = int(w / 2)  # half of tracker window w
     halfH = int(h / 2)  # half of tracker window h
     cx = cy = 0  # center x and center y
-    cmx = track_window[0] + halfW # center mass x
+    cmx = track_window[0] + halfW  # center mass x
     cmy = track_window[1] + halfH  #  center mass y
     loop_count = max_loop
+    hist_curr = -1 * roi_hist
     # 3. mean shift loops
-    while (abs(cx - cmx) > 5 or abs(cy - cmy) > 5) and loop_count > 0:
+    while bhatta(hist_curr, roi_hist) < 0.9 and loop_count > 0:
         # assign center mass point to current center point
         cx = cmx
         cy = cmy
@@ -121,8 +118,11 @@ def doTracking():
                 totalmassY += dst[j][i] * j
                 totalmass += dst[j][i]
         # print("totalmassX, totalmassY , totalmass:", totalmassX, totalmassY, totalmass)
+        # update cmx and hist_curr
         cmx = (int)(totalmassX / totalmass)
         cmy = (int)(totalmassY / totalmass)
+        newWindow = image[cmy - halfH : cmy + halfH, cmx - halfW : cmx + halfW]
+        hist_curr = buildHist(newWindow)
         # print("cmx, cmy: ", cmx, cmy)
         # decrease loop_count
         loop_count -= 1
@@ -218,11 +218,8 @@ def inBoundary(x, y):
         return True
 
 
-def determineWindowSize(x, y):
-    # smaple around x, y to get the approximate color range
-    hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
-
-    return 30, 40
+def bhatta(hist1, hist2):
+    return 1 - spatial.distance.cosine(hist1, hist2)
 
 
 def drawRectangle():
@@ -230,6 +227,21 @@ def drawRectangle():
     p1 = (track_window[0], track_window[1])
     p2 = (track_window[0] + w, track_window[1] + h)
     cv2.rectangle(image, p1, p2, (0, 0, 255), thickness=2, lineType=cv2.LINE_8)
+
+
+# take a 2D array as input window,and output its histgram
+def buildHist(input_window):
+    # print("building histogram")
+    hsv_roi = cv2.cvtColor(input_window, cv2.COLOR_BGR2HSV)
+    mask = cv2.inRange(
+        hsv_roi, np.array((0.0, 60.0, 32.0)), np.array((180.0, 255.0, 255.0))
+    )
+    ret_hist = cv2.calcHist([hsv_roi], [0], mask, [180], [0, 180])
+    cv2.normalize(ret_hist, ret_hist, 0, 255, cv2.NORM_MINMAX)
+    # print("ret_hist size:", ret_hist.size)
+    # print(ret_hist)
+    # print("finished  building histogram")
+    return ret_hist
 
 
 """----------------------------------------main--------------------------"""
