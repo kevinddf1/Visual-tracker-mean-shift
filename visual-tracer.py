@@ -11,7 +11,6 @@ Press q to exit,
 Press t to toggle tracker rectangle
 """
 
-# You can format an entire file with Format Document (Ctrl+Shift+I)
 # Reference:
 # https://gist.github.com/jstadler/c47861f3d86c40b82d4c (find center mass)
 # https://www.programcreek.com/python/example/89397/cv2.meanShift (openCV meanshift)
@@ -27,7 +26,7 @@ from scipy import spatial
 # Mian steps
 # 1. initiate a target region, (x,y,w,h)
 # 2. press t to toggle tracking
-# 3. mean-shift tracker, (target model, mean-shift vector using Bhattacharyya distance)
+# 3. mean-shift tracker, (target model using color histogram, mean-shift vector using Bhattacharyya distance)
 # 4. continue until user press q to quit
 
 """--------------------------------------------------------global data --------------------------------------"""
@@ -37,13 +36,13 @@ showRectangle = False
 roiSelect = False
 
 # iamge frame info
-image = []  # type: np.zeros((640, 480, 3), np.uint8)  # default size 640x480
+image = []  # np.zeros((640, 480, 3), np.uint8) 
 imageWidth = imageHeight = 0
 
 # region of interst info. roi is a rectangle repsentend by the left corner point(x,y) and width and hight
 w, h = 30, 20  # roi width, roi hight
 track_window = [0, 0, w, h]  # left corner point(x,y) and width and hight
-trackedImage = []  # type: np.zeros((w, h, 3), np.uint8)
+trackedImage = []  # np.zeros((w, h, 3), np.uint8)
 roi_hist = []
 
 # other constants
@@ -79,17 +78,11 @@ def clickHandler(event, x, y, flags, param):
 # mean-shift tracker, (target histogram, Bhattacharyya distance)
 def doTracking():
     global track_window
-    # 1. intialize
+    # 1. dst stores each pixel probility base on roi histogram
     hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
-    # print(hsv)
-    # print("hsv size:", hsv.size)
     dst = cv2.calcBackProject([hsv], [0], roi_hist, [0, 180], 1)
-    # print(dst)
-    # print("dst size:", dst.size)
-    # apply meanshift to get the new location
-    # ret, track_window = cv2.meanShift(dst, track_window, term_crit)
 
-    # 2. define mean shift variables
+    # 2. intialize mean shift variables
     halfW = int(w / 2)  # half of tracker window w
     halfH = int(h / 2)  # half of tracker window h
     cx = cy = 0  # center x and center y
@@ -114,7 +107,6 @@ def doTracking():
                 totalmassX += dst[j][i] * i
                 totalmassY += dst[j][i] * j
                 totalmass += dst[j][i]
-        # print("totalmassX, totalmassY , totalmass:", totalmassX, totalmassY, totalmass)
         # update cmx and hist_curr
         if totalmass != 0:
             cmx = (int)(totalmassX / totalmass)
@@ -125,20 +117,12 @@ def doTracking():
         ]
         hist_curr = buildHist(newWindow)
         similarity = bhatta(hist_curr, roi_hist)
-        # print("cmx, cmy: ", cmx, cmy)
-        # decrease loop_count
         loop_count -= 1
 
     # 4. update trackwindow
     track_window[0] = cmx - halfW
     track_window[1] = cmy - halfH
 
-    # # parallel calculating
-    # def tempFun(j):
-    #     for i in range(imageHeight):
-    #         TuneTracker(j, i)
-    # tempList = range(imageWidth)
-    # pool.map_async(tempFun, tempList)
 
 
 """--------------------------------------------captureVideo(set toggle tracking)--------------------------------"""
@@ -152,7 +136,6 @@ def captureVideo(src):
         ret = cap.set(3, 640) and cap.set(4, 480)
         imageWidth = 480
         imageHeight = 640
-        # image = np.zeros((640, 480, 3), np.uint8)  # web cam window default size 640x480
         if ret == False:
             print("Cannot set frame properties, returning")
             return
@@ -207,8 +190,6 @@ def captureVideo(src):
 
 # test user click position, it can't be at the edge, otherwise our red rectangle will be out of scope
 def inBoundary(x, y):
-    w = track_window[2]
-    h = track_window[3]
     if (
         x < 0 + w / 2
         or x >= imageWidth - w / 2
@@ -235,16 +216,12 @@ def drawRectangle():
 
 # take a 2D array as input window,and output its histgram
 def buildHist(input_window):
-    # print("building histogram")
     hsv_roi = cv2.cvtColor(input_window, cv2.COLOR_BGR2HSV)
     mask = cv2.inRange(
         hsv_roi, np.array((0.0, 60.0, 32.0)), np.array((180.0, 255.0, 255.0))
     )
     ret_hist = cv2.calcHist([hsv_roi], [0], mask, [180], [0, 180])
     cv2.normalize(ret_hist, ret_hist, 0, 255, cv2.NORM_MINMAX)
-    # print("ret_hist size:", ret_hist.size)
-    # print(ret_hist)
-    # print("finished  building histogram")
     return ret_hist
 
 
@@ -264,5 +241,4 @@ if __name__ == "__main__":
 else:
     print("Not in main")
 
-# close parallel programming
 print("Program end")
