@@ -32,23 +32,20 @@ isTracking = False
 showRectangle = False
 roiSelect = False
 
-# iamge info
-r = g = b = 0.0
-image = np.zeros((640, 480, 3), np.uint8)  # default size 640x480
+# iamge frame info
+image = []  # type: np.zeros((640, 480, 3), np.uint8)  # default size 640x480
 imageWidth = imageHeight = 0
 
 # region of interst info. roi is a rectangle repsentend by the left corner point(x,y) and width and hight
-x = y = w = h = 0
-track_window = [x, y, w, h]  # roi, left corner point(x,y) and width and hight
-trackedImage = []  # np.zeros((0, 0, 3), np.uint8)
+w, h = 40, 30  # roi width, roi hight
+track_window = [0, 0, w, h]  # left corner point(x,y) and width and hight
+trackedImage = []  # type: np.zeros((w, h, 3), np.uint8)
 roi_hist = []
 
-# Setup the termination criteria, either 10 iteration or move by atleast 1 pt
-# term_crit = (cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 10, 1)
 # other constants
 max_loop = 10
-sample_range = 5 # when click a intereted point, use smaple to determine intested object
-color_threshold = 40
+sample_range = 5  # when click a intereted point, smaple to determine intested color
+color_threshold = 40  # used to determine intested object
 
 # parallelizing processing
 pool = mp.Pool()
@@ -57,15 +54,13 @@ pool = mp.Pool()
 
 # initiate a target region, and build the target model using a histogram as feature
 def clickHandler(event, x, y, flags, param):
-    global showRectangle, isTracking, roiSelect, track_window, trackedImage, roi_hist, w, h
+    global showRectangle, isTracking, roiSelect, track_window, trackedImage, roi_hist
     if event == cv2.EVENT_LBUTTONUP:
         print("left button released at location ", x, y)
         # out of boundary
         if inBoundary(x, y) == False:
             print("invalid click position, try again")
         else:
-            # determine w, h of the roi window by the interested object size
-            w, h = determineWindowSize(x, y)
             # change x,y to the rectangle left corner point
             x = int(x - w / 2)
             y = int(y - h / 2)
@@ -92,7 +87,8 @@ def clickHandler(event, x, y, flags, param):
 
 # mean-shift tracker, (target histogram, Bhattacharyya distance)
 def doTracking():
-    global r, g, b, track_window
+    global track_window
+    # 1. intialize
     hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
     # print(hsv)
     # print("hsv size:", hsv.size)
@@ -102,24 +98,24 @@ def doTracking():
     # apply meanshift to get the new location
     # ret, track_window = cv2.meanShift(dst, track_window, term_crit)
 
-    # define mean shift variables
-    htrww = int(track_window[2] / 2)  # half of tracker window w
-    htrwh = int(track_window[3] / 2)  # half of tracker window h
+    # 2. define mean shift variables
+    halfW= int(w / 2)  # half of tracker window w
+    halfH = int(h / 2)  # half of tracker window h
     cx = cy = 0  # center x and center y
-    cmx = track_window[0] + htrww  # center mass x
-    cmy = track_window[1] + htrwh  #  center mass y
+    cmx = track_window[0] + halfW # center mass x
+    cmy = track_window[1] + halfH  #  center mass y
     loop_count = max_loop
-    # mean shift loops
+    # 3. mean shift loops
     while (abs(cx - cmx) > 5 or abs(cy - cmy) > 5) and loop_count > 0:
-        # assgin new cx and cy
+        # assign center mass point to current center point
         cx = cmx
         cy = cmy
         totalmassX = 0
         totalmassY = 0
         totalmass = 0
         # calulate cmx and cmy base on the roi range
-        for i in range(max(0, cx - htrww), min(cx + htrww, imageWidth)):
-            for j in range(max(0, cy - htrwh), min(cy + htrwh, imageHeight)):
+        for i in range(max(0, cx - halfW), min(cx + halfW, imageWidth)):
+            for j in range(max(0, cy - halfH), min(cy + halfH, imageHeight)):
                 # print('test')
                 totalmassX += dst[j][i] * i
                 totalmassY += dst[j][i] * j
@@ -131,9 +127,9 @@ def doTracking():
         # decrease loop_count
         loop_count -= 1
 
-    # change trackwindow
-    track_window[0] = cmx - htrww
-    track_window[1] = cmy - htrwh
+    # 4. update trackwindow
+    track_window[0] = cmx - halfW
+    track_window[1] = cmy - halfH
 
     # # parallel calculating
     # def tempFun(j):
@@ -144,18 +140,21 @@ def doTracking():
 
 
 """--------------------------------------------captureVideo(set toggle tracking)--------------------------------"""
-# read input video and setup output window
+# read input video, and display output window
 def captureVideo(src):
-    # read input video and setup the output window
     global isTracking, showRectangle, roiSelect, image, imageHeight, imageWidth
     cap = cv2.VideoCapture(src)
-    # read web cam input
+    # 1. read input video
+    # read web cam input CASE
     if cap.isOpened() and src == "0":
         ret = cap.set(3, 640) and cap.set(4, 480)
+        imageWidth = 480
+        imageHeight = 640
+        # image = np.zeros((640, 480, 3), np.uint8)  # web cam window default size 640x480
         if ret == False:
             print("Cannot set frame properties, returning")
             return
-    # read disk video
+    # read disk video CASE
     else:
         ret, image = cap.read()
         imageHeight, imageWidth, implanes = image.shape
@@ -163,7 +162,7 @@ def captureVideo(src):
         print(frate, " is the framerate")
         waitTime = int(1000 / frate)
 
-    # waitTime = time/frame. Adjust accordingly.
+    # 2. and setup the output window. (waitTime = time/frame. Adjust accordingly.)
     if src == 0:
         waitTime = 1
     if cap:
@@ -174,10 +173,9 @@ def captureVideo(src):
     windowName = "Input View, press q to quit"
     cv2.namedWindow(windowName)
     cv2.setMouseCallback(windowName, clickHandler)
-
     print("image size is ", image.shape)
 
-    # visual tracer loop
+    # 3. loop each frame, do visual tracing, display window
     while True:
         # Capture frame-by-frame
         ret, image = cap.read()
@@ -198,7 +196,7 @@ def captureVideo(src):
         elif inputKey == ord("t"):
             showRectangle = not showRectangle
 
-    # When everything done, release the capture
+    # 4. When everything done, release the capture
     cap.release()
     cv2.destroyAllWindows()
 
@@ -207,6 +205,8 @@ def captureVideo(src):
 
 # test user click position, it can't be at the edge, otherwise our red rectangle will be out of scope
 def inBoundary(x, y):
+    w = track_window[2]
+    h = track_window[3]
     if (
         x < 0 + w / 2
         or x >= imageWidth - w / 2
@@ -218,30 +218,11 @@ def inBoundary(x, y):
         return True
 
 
-# # tune the brightness of the image
-# def TuneTracker(x, y):
-#     global r, g, b, image
-#     b, g, r = image[y, x]
-#     sumpixels = float(b) + float(g) + float(r)
-#     if sumpixels != 0:
-#         b = int(b / sumpixels)
-#         g = int(g / sumpixels)
-#         r = int(r / sumpixels)
-#         image[y, x] = [b, g, r]
-#         # print(r, g, b, "at location ", x, y)
-
-
-def determineWindowSize(x,y):
+def determineWindowSize(x, y):
     # smaple around x, y to get the approximate color range
     hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
-    
-    return 30, 40
 
-# def mapClicks(x, y, curWidth, curHeight):
-#     global imageHeight, imageWidth
-#     imageX = x * imageWidth / curWidth
-#     imageY = y * imageHeight / curHeight
-#     return imageX, imageY
+    return 30, 40
 
 
 def drawRectangle():
