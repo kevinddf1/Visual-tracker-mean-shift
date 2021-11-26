@@ -92,6 +92,7 @@ def doTracking():
     loop_count = max_loop
     hist_curr = -1 * roi_hist
     similarity = bhatta(hist_curr, roi_hist)
+    
     # 3. mean shift loops
     while similarity < 0.9 and loop_count > 0:
         print("similarity: ", similarity)
@@ -201,13 +202,13 @@ def inBoundary(x, y):
     else:
         return True
 
-
+# Bhattacharyya distance used for determine similarity between 2 histograms. return range [0,1].  1 means exactly the same, 0 means totally different
 def bhatta(hist1, hist2):
     if np.linalg.norm(hist1) == 0 or np.linalg.norm(hist2) == 0:
         return 0
     return 1 - spatial.distance.cosine(hist1, hist2)
 
-
+# draw rectangle that indicate the target 
 def drawRectangle():
     global image
     p1 = (track_window[0], track_window[1])
