@@ -18,7 +18,6 @@ Press t to toggle tracker rectangle
 
 
 from __future__ import division
-import multiprocessing as mp
 import numpy as np
 import cv2
 import sys
@@ -42,18 +41,15 @@ image = []  # type: np.zeros((640, 480, 3), np.uint8)  # default size 640x480
 imageWidth = imageHeight = 0
 
 # region of interst info. roi is a rectangle repsentend by the left corner point(x,y) and width and hight
-w, h = 40, 30  # roi width, roi hight
+w, h = 30, 20  # roi width, roi hight
 track_window = [0, 0, w, h]  # left corner point(x,y) and width and hight
 trackedImage = []  # type: np.zeros((w, h, 3), np.uint8)
 roi_hist = []
 
 # other constants
-max_loop = 10
-sample_range = 5  # when click a intereted point, smaple to determine intested color
-color_threshold = 40  # used to determine intested object
+max_loop = 5
 
-# parallelizing processing
-pool = mp.Pool()
+
 
 """ -------------------------------------------clickHandler (initiate a target region)---------------------------------------------"""
 
