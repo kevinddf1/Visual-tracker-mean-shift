@@ -11,7 +11,7 @@ Press q to exit,
 Press t to toggle tracker rectangle
 """
 
-# You can format an entire file with Format Document (Ctrl+Shift+I) 
+# You can format an entire file with Format Document (Ctrl+Shift+I)
 
 from __future__ import division
 import multiprocessing as mp
@@ -34,22 +34,21 @@ roiSelect = False
 
 # iamge info
 r = g = b = 0.0
-image = np.zeros((640, 480, 3), np.uint8)
+image = np.zeros((640, 480, 3), np.uint8)  # default size 640x480
 imageWidth = imageHeight = 0
 
 # region of interst info. roi is a rectangle repsentend by the left corner point(x,y) and width and hight
-w, h = (
-    60,
-    40,
-)
-ratio = 5  # adjust the w,h depents on the input image size
-track_window = [0, 0, w, h]
-trackedImage = np.zeros((h, w, 3), np.uint8)
+x = y = w = h = 0
+track_window = [x, y, w, h]  # roi, left corner point(x,y) and width and hight
+trackedImage = []  # np.zeros((0, 0, 3), np.uint8)
 roi_hist = []
 
 # Setup the termination criteria, either 10 iteration or move by atleast 1 pt
-term_crit = (cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 10, 1)
+# term_crit = (cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 10, 1)
+# other constants
 max_loop = 10
+sample_range = 5 # when click a intereted point, use smaple to determine intested object
+color_threshold = 40
 
 # parallelizing processing
 pool = mp.Pool()
@@ -58,14 +57,16 @@ pool = mp.Pool()
 
 # initiate a target region, and build the target model using a histogram as feature
 def clickHandler(event, x, y, flags, param):
-    global showRectangle, isTracking, roiSelect, track_window, trackedImage, roi_hist
+    global showRectangle, isTracking, roiSelect, track_window, trackedImage, roi_hist, w, h
     if event == cv2.EVENT_LBUTTONUP:
         print("left button released at location ", x, y)
         # out of boundary
         if inBoundary(x, y) == False:
             print("invalid click position, try again")
         else:
-            # change it to the rectangle left corner point
+            # determine w, h of the roi window by the interested object size
+            w, h = determineWindowSize(x, y)
+            # change x,y to the rectangle left corner point
             x = int(x - w / 2)
             y = int(y - h / 2)
             # edit gobal variables
@@ -123,10 +124,10 @@ def doTracking():
                 totalmassX += dst[j][i] * i
                 totalmassY += dst[j][i] * j
                 totalmass += dst[j][i]
-        print("totalmassX, totalmassY , totalmass:", totalmassX, totalmassY, totalmass)
+        # print("totalmassX, totalmassY , totalmass:", totalmassX, totalmassY, totalmass)
         cmx = (int)(totalmassX / totalmass)
         cmy = (int)(totalmassY / totalmass)
-        print("cmx, cmy: ", cmx, cmy)
+        # print("cmx, cmy: ", cmx, cmy)
         # decrease loop_count
         loop_count -= 1
 
@@ -146,7 +147,7 @@ def doTracking():
 # read input video and setup output window
 def captureVideo(src):
     # read input video and setup the output window
-    global isTracking, showRectangle, roiSelect, image, imageHeight, imageWidth, w, h
+    global isTracking, showRectangle, roiSelect, image, imageHeight, imageWidth
     cap = cv2.VideoCapture(src)
     # read web cam input
     if cap.isOpened() and src == "0":
@@ -158,8 +159,6 @@ def captureVideo(src):
     else:
         ret, image = cap.read()
         imageHeight, imageWidth, implanes = image.shape
-        h = int(imageHeight / ratio)
-        w = int(imageWidth / ratio)
         frate = cap.get(cv2.CAP_PROP_FPS)
         print(frate, " is the framerate")
         waitTime = int(1000 / frate)
@@ -219,18 +218,24 @@ def inBoundary(x, y):
         return True
 
 
-# tune the brightness of the image
-def TuneTracker(x, y):
-    global r, g, b, image
-    b, g, r = image[y, x]
-    sumpixels = float(b) + float(g) + float(r)
-    if sumpixels != 0:
-        b = int(b / sumpixels)
-        g = int(g / sumpixels)
-        r = int(r / sumpixels)
-        image[y, x] = [b, g, r]
-        # print(r, g, b, "at location ", x, y)
+# # tune the brightness of the image
+# def TuneTracker(x, y):
+#     global r, g, b, image
+#     b, g, r = image[y, x]
+#     sumpixels = float(b) + float(g) + float(r)
+#     if sumpixels != 0:
+#         b = int(b / sumpixels)
+#         g = int(g / sumpixels)
+#         r = int(r / sumpixels)
+#         image[y, x] = [b, g, r]
+#         # print(r, g, b, "at location ", x, y)
 
+
+def determineWindowSize(x,y):
+    # smaple around x, y to get the approximate color range
+    hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+    
+    return 30, 40
 
 # def mapClicks(x, y, curWidth, curHeight):
 #     global imageHeight, imageWidth
