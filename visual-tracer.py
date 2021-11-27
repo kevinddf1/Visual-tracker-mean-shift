@@ -14,6 +14,7 @@ Press t to toggle tracker rectangle
 # Reference:
 # https://gist.github.com/jstadler/c47861f3d86c40b82d4c (find center mass)
 # https://www.programcreek.com/python/example/89397/cv2.meanShift (openCV meanshift)
+# capture.py from Prof.Junaed Sattar
 
 
 from __future__ import division
@@ -36,7 +37,7 @@ showRectangle = False
 roiSelect = False
 
 # iamge frame info
-image = []  # np.zeros((640, 480, 3), np.uint8) 
+image = []  # np.zeros((640, 480, 3), np.uint8)
 imageWidth = imageHeight = 0
 
 # region of interst info. roi is a rectangle repsentend by the left corner point(x,y) and width and hight
@@ -55,7 +56,11 @@ max_loop = 5
 def clickHandler(event, x, y, flags, param):
     global showRectangle, isTracking, roiSelect, track_window, trackedImage, roi_hist
     if event == cv2.EVENT_LBUTTONUP:
-        print("ROI Selected, left button released at location ", x, y, ', press t to start tracking')
+        print(
+            "ROI Selected, left button released at location ",
+            x,
+            y
+        )
         # out of boundary
         if inBoundary(x, y) == False:
             print("invalid click position, try again")
@@ -71,8 +76,7 @@ def clickHandler(event, x, y, flags, param):
             trackedImage = image[y : y + h, x : x + w]
             # build histogram
             roi_hist = buildHist(trackedImage)
-            #print(roi_hist)
-            
+            # print(roi_hist)
 
 
 """---------------------------------------------doTracking(mean-shift tracker)----------------------------------------------"""
@@ -93,10 +97,10 @@ def doTracking():
     loop_count = max_loop
     hist_curr = -1 * roi_hist
     similarity = bhatta(hist_curr, roi_hist)
-    
+
     # 3. mean shift loops
     while similarity < 0.9 and loop_count > 0:
-        #print("similarity: ", similarity)
+        # print("similarity: ", similarity)
         # assign center mass point to current center point
         cx = cmx
         cy = cmy
@@ -127,23 +131,20 @@ def doTracking():
     track_window[1] = cmy - halfH
 
 
-
 """--------------------------------------------captureVideo(set toggle tracking)--------------------------------"""
 # read input video, and display output window
 def captureVideo(src):
     global isTracking, showRectangle, roiSelect, image, imageHeight, imageWidth
     cap = cv2.VideoCapture(src)
     # 1. read input video
-    # read web cam input CASE
-    if cap.isOpened() and src == "0":
+    if cap.isOpened() and src == "0":  # read web cam input CASE
         ret = cap.set(3, 640) and cap.set(4, 480)
         imageWidth = 480
         imageHeight = 640
         if ret == False:
             print("Cannot set frame properties, returning")
             return
-    # read disk video CASE
-    else:
+    else:  # read disk video CASE
         ret, image = cap.read()
         imageHeight, imageWidth, implanes = image.shape
         frate = cap.get(cv2.CAP_PROP_FPS)
@@ -163,8 +164,6 @@ def captureVideo(src):
     cv2.setMouseCallback(windowName, clickHandler)
     print("image size is ", image.shape)
 
-    
-    
     # 3. loop each frame, do visual tracing, display window
     while True:
         # Capture frame-by-frame
@@ -184,15 +183,15 @@ def captureVideo(src):
         if inputKey == ord("q"):
             break
         elif inputKey == ord("t"):
-            print('please click a intested target and press t to start tracking')
+            print("please click a intested target and press t to start tracking")
             cv2.waitKey(-1)
             # showRectangle = not showRectangle
 
         # pause first frame for user to click the roi
-        while(roiSelect==False):
-            print('please click a intested target and press t to start tracking')
+        while roiSelect == False:
+            print("please click a intested target and press t to start tracking")
             cv2.waitKey(-1)
-    
+
     # 4. When everything done, release the capture
     cap.release()
     cv2.destroyAllWindows()
@@ -212,13 +211,15 @@ def inBoundary(x, y):
     else:
         return True
 
+
 # Bhattacharyya distance used for determine similarity between 2 histograms. return range [0,1].  1 means exactly the same, 0 means totally different
 def bhatta(hist1, hist2):
     if np.linalg.norm(hist1) == 0 or np.linalg.norm(hist2) == 0:
         return 0
     return 1 - spatial.distance.cosine(hist1, hist2)
 
-# draw rectangle that indicate the target 
+
+# draw rectangle that indicate the target
 def drawRectangle():
     global image
     p1 = (track_window[0], track_window[1])
