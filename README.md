@@ -3,6 +3,12 @@ Author: Fan Ding \
 Date: 11/17/2021 \
 Description: This repository captures a video from either webcam or a disk movie file, and do visual trace on selected objects. A red rectangle will indicate where the region of interest is. 
 
+## Screenshots
+![Alt text](/Screenshot_Surfer?raw=true "Optional Title")
+![Alt text](/Screenshot_Girl?raw=true "Optional Title")
+
+
+
 
 ## Develop steps
 1. Initiate a target region, repesented as (x,y,w,h). (x,y) is the left up corner point of the region, and w is width, h is highth.

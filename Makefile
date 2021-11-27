@@ -1,4 +1,4 @@
 all:
-	python3 visual-tracer.py Jumping/img/%04d.jpg
+	python3 visual-tracer.py Girl/img/%04d.jpg
 	
 	

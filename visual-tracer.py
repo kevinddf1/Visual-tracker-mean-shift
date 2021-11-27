@@ -55,7 +55,7 @@ max_loop = 5
 def clickHandler(event, x, y, flags, param):
     global showRectangle, isTracking, roiSelect, track_window, trackedImage, roi_hist
     if event == cv2.EVENT_LBUTTONUP:
-        print("left button released at location ", x, y)
+        print("ROI Selected, left button released at location ", x, y, ', press t to start tracking')
         # out of boundary
         if inBoundary(x, y) == False:
             print("invalid click position, try again")
@@ -71,7 +71,8 @@ def clickHandler(event, x, y, flags, param):
             trackedImage = image[y : y + h, x : x + w]
             # build histogram
             roi_hist = buildHist(trackedImage)
-            print(roi_hist)
+            #print(roi_hist)
+            
 
 
 """---------------------------------------------doTracking(mean-shift tracker)----------------------------------------------"""
@@ -95,7 +96,7 @@ def doTracking():
     
     # 3. mean shift loops
     while similarity < 0.9 and loop_count > 0:
-        print("similarity: ", similarity)
+        #print("similarity: ", similarity)
         # assign center mass point to current center point
         cx = cmx
         cy = cmy
@@ -162,6 +163,8 @@ def captureVideo(src):
     cv2.setMouseCallback(windowName, clickHandler)
     print("image size is ", image.shape)
 
+    
+    
     # 3. loop each frame, do visual tracing, display window
     while True:
         # Capture frame-by-frame
@@ -181,8 +184,15 @@ def captureVideo(src):
         if inputKey == ord("q"):
             break
         elif inputKey == ord("t"):
-            showRectangle = not showRectangle
+            print('please click a intested target and press t to start tracking')
+            cv2.waitKey(-1)
+            # showRectangle = not showRectangle
 
+        # pause first frame for user to click the roi
+        while(roiSelect==False):
+            print('please click a intested target and press t to start tracking')
+            cv2.waitKey(-1)
+    
     # 4. When everything done, release the capture
     cap.release()
     cv2.destroyAllWindows()
@@ -234,7 +244,7 @@ print("Starting program")
 if __name__ == "__main__":
     arglist = sys.argv
     src = 0
-    print("Argument count is ", len(arglist))
+    # print("Argument count is ", len(arglist))
     if len(arglist) == 2:
         src = arglist[1]
     else:
