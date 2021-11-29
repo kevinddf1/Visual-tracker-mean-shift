@@ -4,8 +4,7 @@ Date: 11/17/2021 \
 Description: This repository captures a video from either webcam or a disk movie file, and do visual trace on selected objects. A red rectangle will indicate where the region of interest is. 
 
 ## Screenshots
-![alt text](Screenshot_Surfer.png "Surfer") \
-![alt text](Screenshot_Girl.png "Girl")
+![alt text](Screenshot_Surfer.png "Surfer")
 
 
 
@@ -16,12 +15,11 @@ Description: This repository captures a video from either webcam or a disk movie
 3. Implement clickHandler: Press t to toggle tracking. Pess q to quit.
 
 
-## To run the code
-1. Format:
-`python3` `visual-tracer.py` `input_file_name` 
-2. Example:
-`python3 visual-tracer.py Girl/img/%04d.jpg` 
 
+## Instructions
+1. Run program:
+`python3` `visual-tracer.py` `input_file_name` (Example: `python3` `visual-tracer.py` `Girl/img/%04d.jpg`) 
+2. Click a intested target and press t to start tracking (see terminal for more instructions)
 
 ## Notes
 1. This program comes with many test input folders.
