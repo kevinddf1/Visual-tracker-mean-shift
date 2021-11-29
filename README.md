@@ -4,8 +4,8 @@ Date: 11/17/2021 \
 Description: This repository captures a video from either webcam or a disk movie file, and do visual trace on selected objects. A red rectangle will indicate where the region of interest is. 
 
 ## Screenshots
-![Alt text](/Screenshot_Surfer?raw=true "Optional Title")
-![Alt text](/Screenshot_Girl?raw=true "Optional Title")
+![alt text](Screenshot_Surfer.png "Surfer") \
+![alt text](Screenshot_Girl.png "Girl")
 
 
 
